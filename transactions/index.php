@@ -6,8 +6,8 @@ $role = $_SESSION['role'];
 $error = '';
 $success = '';
 
-// Check permission for modifications (Admin & Petugas only)
-$can_edit = ($role === 'Admin' || $role === 'Petugas');
+// Check permission for modifications (staff and Warehouse Manager can edit)
+$can_edit = ($role === 'staff' || $role === 'Warehouse Manager');
 
 // Handle Transaction Creation
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $can_edit) {
@@ -24,9 +24,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $can_edit) {
             $tipe = $_POST['tipe'] ?? ''; // Masuk / Keluar
             $keterangan = trim($_POST['keterangan'] ?? '');
             $user_id = $_SESSION['user_id'];
+            
+            // Check supplier for incoming stock
+            $supplier_id = null;
+            if ($tipe === 'Masuk') {
+                $supplier_id = isset($_POST['supplier_id']) && $_POST['supplier_id'] !== '' ? intval($_POST['supplier_id']) : null;
+            }
 
             if ($item_id <= 0 || $qty <= 0 || !in_array($tipe, ['Masuk', 'Keluar'])) {
                 $error = "Semua input transaksi wajib diisi dengan benar. Qty minimal 1.";
+            } elseif ($tipe === 'Masuk' && empty($supplier_id)) {
+                $error = "Supplier wajib dipilih untuk transaksi barang masuk.";
             } else {
                 // Database transaction
                 mysqli_begin_transaction($conn);
@@ -59,8 +67,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $can_edit) {
                     }
 
                     // 3. Insert into Transactions
-                    $ins_stmt = mysqli_prepare($conn, "INSERT INTO transactions (user_id, item_id, tanggal, qty, tipe, keterangan) VALUES (?, ?, ?, ?, ?, ?)");
-                    mysqli_stmt_bind_param($ins_stmt, "iisiss", $user_id, $item_id, $tanggal, $qty, $tipe, $keterangan);
+                    $ins_stmt = mysqli_prepare($conn, "INSERT INTO transactions (user_id, item_id, supplier_id, tanggal, qty, tipe, keterangan) VALUES (?, ?, ?, ?, ?, ?, ?)");
+                    mysqli_stmt_bind_param($ins_stmt, "iiisiss", $user_id, $item_id, $supplier_id, $tanggal, $qty, $tipe, $keterangan);
                     
                     if (!mysqli_stmt_execute($ins_stmt)) {
                         mysqli_stmt_close($ins_stmt);
@@ -97,21 +105,23 @@ $search = trim($_GET['search'] ?? '');
 // Fetch Transactions with Search
 if (!empty($search)) {
     $search_param = "%" . $search . "%";
-    $query = "SELECT transactions.*, items.nama_barang, items.kode_barang, users.name as operator 
+    $query = "SELECT transactions.*, items.nama_barang, items.kode_barang, users.name as operator, suppliers.name as supplier_name 
               FROM transactions 
               JOIN items ON transactions.item_id = items.id 
               JOIN users ON transactions.user_id = users.id 
-              WHERE items.nama_barang LIKE ? OR items.kode_barang LIKE ? OR transactions.tipe LIKE ? OR transactions.keterangan LIKE ?
+              LEFT JOIN suppliers ON transactions.supplier_id = suppliers.id
+              WHERE items.nama_barang LIKE ? OR items.kode_barang LIKE ? OR transactions.tipe LIKE ? OR transactions.keterangan LIKE ? OR suppliers.name LIKE ?
               ORDER BY transactions.tanggal DESC, transactions.id DESC";
     $stmt = mysqli_prepare($conn, $query);
-    mysqli_stmt_bind_param($stmt, "ssss", $search_param, $search_param, $search_param, $search_param);
+    mysqli_stmt_bind_param($stmt, "sssss", $search_param, $search_param, $search_param, $search_param, $search_param);
     mysqli_stmt_execute($stmt);
     $result = mysqli_stmt_get_result($stmt);
 } else {
-    $query = "SELECT transactions.*, items.nama_barang, items.kode_barang, users.name as operator 
+    $query = "SELECT transactions.*, items.nama_barang, items.kode_barang, users.name as operator, suppliers.name as supplier_name 
               FROM transactions 
               JOIN items ON transactions.item_id = items.id 
               JOIN users ON transactions.user_id = users.id 
+              LEFT JOIN suppliers ON transactions.supplier_id = suppliers.id
               ORDER BY transactions.tanggal DESC, transactions.id DESC";
     $result = mysqli_query($conn, $query);
 }
@@ -121,6 +131,13 @@ $items_res = mysqli_query($conn, "SELECT id, nama_barang, kode_barang, stok FROM
 $items = [];
 while ($it = mysqli_fetch_assoc($items_res)) {
     $items[] = $it;
+}
+
+// Fetch active suppliers list for form dropdown
+$suppliers_res = mysqli_query($conn, "SELECT id, name FROM suppliers ORDER BY name ASC");
+$suppliers = [];
+while ($sup = mysqli_fetch_assoc($suppliers_res)) {
+    $suppliers[] = $sup;
 }
 
 // Generate CSRF Token
@@ -141,9 +158,10 @@ $token = generate_csrf_token();
         <ul class="sidebar-menu">
             <li><a href="/dashboard.php">Dashboard</a></li>
             <li><a href="/categories/index.php">Kategori Barang</a></li>
+            <li><a href="/suppliers/index.php">Data Supplier</a></li>
             <li><a href="/items/index.php">Data Barang</a></li>
             <li><a href="/transactions/index.php" class="active">Transaksi Barang</a></li>
-            <?php if ($role === 'Admin'): ?>
+            <?php if ($role === 'Warehouse Manager'): ?>
                 <li><a href="/users/index.php">Kelola User</a></li>
             <?php endif; ?>
             <li><a href="/report/index.php">Laporan</a></li>
@@ -168,7 +186,7 @@ $token = generate_csrf_token();
             <div class="alert alert-success"><?= esc($success) ?></div>
         <?php endif; ?>
 
-        <!-- Form Entry Transaksi (Only Admin & Petugas) -->
+        <!-- Form Entry Transaksi (Only staff and Warehouse Manager) -->
         <?php if ($can_edit): ?>
             <div class="form-modal-inline">
                 <h3>Input Transaksi Barang</h3>
@@ -193,16 +211,27 @@ $token = generate_csrf_token();
 
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                         <div class="form-group">
-                            <label for="qty">Jumlah (Quantity)</label>
-                            <input type="number" id="qty" name="qty" class="form-control" min="1" required>
-                        </div>
-                        <div class="form-group">
                             <label for="tipe">Tipe Transaksi</label>
-                            <select id="tipe" name="tipe" class="form-control" required>
+                            <select id="tipe" name="tipe" class="form-control" onchange="toggleSupplierField()" required>
                                 <option value="Masuk">Masuk (Stok Bertambah)</option>
                                 <option value="Keluar">Keluar (Stok Berkurang)</option>
                             </select>
                         </div>
+                        <div class="form-group">
+                            <label for="qty">Jumlah (Quantity)</label>
+                            <input type="number" id="qty" name="qty" class="form-control" min="1" required>
+                        </div>
+                    </div>
+
+                    <!-- Supplier field: only required for Incoming Stock ('Masuk') -->
+                    <div class="form-group" id="supplier-group">
+                        <label for="supplier_id">Supplier</label>
+                        <select id="supplier_id" name="supplier_id" class="form-control">
+                            <option value="">-- Pilih Supplier --</option>
+                            <?php foreach ($suppliers as $sup): ?>
+                                <option value="<?= esc($sup['id']) ?>"><?= esc($sup['name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
 
                     <div class="form-group">
@@ -219,7 +248,7 @@ $token = generate_csrf_token();
         <div class="actions-row">
             <h3>Riwayat Transaksi</h3>
             <form action="/transactions/index.php" method="GET" class="search-form">
-                <input type="text" name="search" class="form-control" style="width: auto;" placeholder="Cari Nama Barang, Tipe..." value="<?= esc($search) ?>">
+                <input type="text" name="search" class="form-control" style="width: auto;" placeholder="Cari Kode, Nama, Supplier, Tipe..." value="<?= esc($search) ?>">
                 <button type="submit" class="btn btn-primary">Cari</button>
                 <?php if (!empty($search)): ?>
                     <a href="/transactions/index.php" class="btn btn-secondary">Reset</a>
@@ -236,6 +265,7 @@ $token = generate_csrf_token();
                         <th style="width: 120px;">Tanggal</th>
                         <th style="width: 120px;">Kode Barang</th>
                         <th>Nama Barang</th>
+                        <th>Supplier</th>
                         <th style="width: 100px;">Jumlah</th>
                         <th style="width: 100px;">Tipe</th>
                         <th>Keterangan</th>
@@ -253,6 +283,7 @@ $token = generate_csrf_token();
                             <td><?= date('d-m-Y', strtotime($row['tanggal'])) ?></td>
                             <td><strong><?= esc($row['kode_barang']) ?></strong></td>
                             <td><?= esc($row['nama_barang']) ?></td>
+                            <td><?= esc($row['supplier_name'] ?? '-') ?></td>
                             <td style="font-weight: bold;"><?= esc($row['qty']) ?></td>
                             <td>
                                 <?php if ($row['tipe'] === 'Masuk'): ?>
@@ -267,13 +298,33 @@ $token = generate_csrf_token();
                     <?php 
                         }
                     } else {
-                        echo "<tr><td colspan='8' style='text-align:center;'>Belum ada data transaksi.</td></tr>";
+                        echo "<tr><td colspan='9' style='text-align:center;'>Belum ada data transaksi.</td></tr>";
                     }
                     ?>
                 </tbody>
             </table>
         </div>
     </div>
+
+    <script>
+    function toggleSupplierField() {
+        const tipe = document.getElementById('tipe').value;
+        const supplierGroup = document.getElementById('supplier-group');
+        const supplierSelect = document.getElementById('supplier_id');
+        
+        if (tipe === 'Masuk') {
+            supplierGroup.style.display = 'block';
+            supplierSelect.setAttribute('required', 'required');
+        } else {
+            supplierGroup.style.display = 'none';
+            supplierSelect.removeAttribute('required');
+            supplierSelect.value = '';
+        }
+    }
+    
+    // Run on load to set initial state
+    document.addEventListener('DOMContentLoaded', toggleSupplierField);
+    </script>
 </body>
 </html>
 <?php

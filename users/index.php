@@ -1,7 +1,7 @@
 <?php
 require_once '../config.php';
-// Restrict to Admin only
-check_role(['Admin']);
+// Restrict to Warehouse Manager only
+check_role(['Warehouse Manager']);
 
 $error = '';
 $success = '';
@@ -19,7 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $name = trim($_POST['name'] ?? '');
             $username = trim($_POST['username'] ?? '');
             $password = $_POST['password'] ?? '';
-            $role = $_POST['role'] ?? 'Pegawai';
+            $role = $_POST['role'] ?? 'staff';
             $phone = trim($_POST['phone'] ?? '');
 
             if (empty($name) || empty($username) || empty($password)) {
@@ -59,12 +59,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $name = trim($_POST['name'] ?? '');
             $username = trim($_POST['username'] ?? '');
             $password = $_POST['password'] ?? '';
-            $role = $_POST['role'] ?? 'Pegawai';
+            $role = $_POST['role'] ?? 'staff';
             $phone = trim($_POST['phone'] ?? '');
 
-            // Prevent self-demotion or self-deletion from Admin to maintain system availability
-            if ($id === $_SESSION['user_id'] && $role !== 'Admin') {
-                $error = "Anda tidak dapat mengubah role Anda sendiri dari Admin.";
+            // Prevent self-demotion or self-deletion from Warehouse Manager to maintain system availability
+            if ($id === $_SESSION['user_id'] && $role !== 'Warehouse Manager') {
+                $error = "Anda tidak dapat mengubah role Anda sendiri dari Warehouse Manager.";
             }
 
             if (empty($name) || empty($username)) {
@@ -164,6 +164,7 @@ $token = generate_csrf_token();
         <ul class="sidebar-menu">
             <li><a href="/dashboard.php">Dashboard</a></li>
             <li><a href="/categories/index.php">Kategori Barang</a></li>
+            <li><a href="/suppliers/index.php">Data Supplier</a></li>
             <li><a href="/items/index.php">Data Barang</a></li>
             <li><a href="/transactions/index.php">Transaksi Barang</a></li>
             <li><a href="/users/index.php" class="active">Kelola User</a></li>
@@ -215,9 +216,8 @@ $token = generate_csrf_token();
                         <div class="form-group">
                             <label for="role">Role</label>
                             <select id="role" name="role" class="form-control" required>
-                                <option value="Pegawai">Pegawai</option>
-                                <option value="Petugas">Petugas</option>
-                                <option value="Admin">Admin</option>
+                                <option value="staff">staff</option>
+                                <option value="Warehouse Manager">Warehouse Manager</option>
                             </select>
                         </div>
                     </div>
@@ -267,9 +267,8 @@ $token = generate_csrf_token();
                         <div class="form-group">
                             <label for="role_edit">Role</label>
                             <select id="role_edit" name="role" class="form-control" required>
-                                <option value="Pegawai" <?= ($edit_row['role'] === 'Pegawai') ? 'selected' : '' ?>>Pegawai</option>
-                                <option value="Petugas" <?= ($edit_row['role'] === 'Petugas') ? 'selected' : '' ?>>Petugas</option>
-                                <option value="Admin" <?= ($edit_row['role'] === 'Admin') ? 'selected' : '' ?>>Admin</option>
+                                <option value="staff" <?= ($edit_row['role'] === 'staff') ? 'selected' : '' ?>>staff</option>
+                                <option value="Warehouse Manager" <?= ($edit_row['role'] === 'Warehouse Manager') ? 'selected' : '' ?>>Warehouse Manager</option>
                             </select>
                         </div>
                     </div>

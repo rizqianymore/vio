@@ -20,15 +20,52 @@ if (session_status() === PHP_SESSION_NONE) {
 
 // Database Credentials
 define('DB_HOST', '127.0.0.1');
-define('DB_USER', 'gudang_user');
+define('DB_USER', 'root');
 define('DB_PASS', '');
 define('DB_NAME', 'pergudangan');
 
 // Connect to Database
-$conn = mysqli_connect(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+$conn = @mysqli_connect(DB_HOST, DB_USER, DB_PASS);
 
 if (!$conn) {
     die("Koneksi database gagal: " . mysqli_connect_error());
+}
+
+// Automatically create database and seed tables if not exist
+$db_selected = @mysqli_select_db($conn, DB_NAME);
+if (!$db_selected) {
+    $create_db_query = "CREATE DATABASE IF NOT EXISTS `" . mysqli_real_escape_string($conn, DB_NAME) . "` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci";
+    if (mysqli_query($conn, $create_db_query)) {
+        mysqli_select_db($conn, DB_NAME);
+        run_sql_seed($conn);
+    } else {
+        die("Gagal membuat database otomatis: " . mysqli_error($conn));
+    }
+} else {
+    // Check if critical tables (like users) exist, seed if missing
+    $table_check = mysqli_query($conn, "SHOW TABLES LIKE 'users'");
+    if (mysqli_num_rows($table_check) === 0) {
+        run_sql_seed($conn);
+    }
+}
+
+/**
+ * Run database.sql file to seed database tables and structure
+ */
+function run_sql_seed($connection) {
+    $sql_file = __DIR__ . '/database.sql';
+    if (file_exists($sql_file)) {
+        $sql = file_get_contents($sql_file);
+        $sql = preg_replace('/--.*?\n/', '', $sql);
+        $sql = preg_replace('/\/\*.*?\*\//', '', $sql);
+        $queries = explode(';', $sql);
+        foreach ($queries as $query) {
+            $query = trim($query);
+            if (!empty($query)) {
+                mysqli_query($connection, $query);
+            }
+        }
+    }
 }
 
 // Set charset to utf8mb4 for security and encoding compatibility

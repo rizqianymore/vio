@@ -7,13 +7,19 @@ if (isset($_SESSION['user_id'])) {
     exit;
 }
 
+// Check Lockout
+if (isset($_SESSION['login_attempts']) && $_SESSION['login_attempts'] >= 3) {
+    http_response_code(403);
+    echo "<div style='text-align: center; margin-top: 100px; font-family: sans-serif;'>";
+    echo "<h1 style='color: #e74c3c;'>Program Terminated</h1>";
+    echo "<p>Batas percobaan login (3 kali) telah terlampaui. Program dihentikan.</p>";
+    echo "<p><a href='/logout.php' style='color: #3498db; text-decoration: none;'>Reset Session</a></p>";
+    echo "</div>";
+    exit;
+}
+
 $error = '';
 
-// Check Lockout
-if (isset($_SESSION['lockout_time']) && time() < $_SESSION['lockout_time']) {
-    $remaining = $_SESSION['lockout_time'] - time();
-    $error = "Terlalu banyak percobaan login salah. Silakan coba lagi dalam " . $remaining . " detik.";
-}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // 1. CSRF Verification
@@ -66,8 +72,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 if ($_SESSION['login_attempts'] >= 3) {
-                    $_SESSION['lockout_time'] = time() + 300; // 5 minutes lockout
-                    $error = "Terlalu banyak percobaan login salah. Akun Anda dikunci selama 5 menit.";
+                    header("Location: /login.php");
+                    exit;
                 } else {
                     $error = "Username atau password salah. (Sisa percobaan: " . (3 - $_SESSION['login_attempts']) . ")";
                 }
@@ -114,6 +120,9 @@ $token = generate_csrf_token();
             
             <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;" <?= (isset($_SESSION['lockout_time']) && time() < $_SESSION['lockout_time']) ? 'disabled' : '' ?>>Masuk</button>
         </form>
+        <div style="margin-top: 20px; text-align: center;">
+            <a href="/db_maker.php" style="font-size: 0.85rem; color: #7f8c8d; text-decoration: none;">⚙️ Database Setup Utility</a>
+        </div>
     </div>
 </body>
 </html>

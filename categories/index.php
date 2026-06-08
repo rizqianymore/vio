@@ -6,8 +6,9 @@ $role = $_SESSION['role'];
 $error = '';
 $success = '';
 
-// Check permission for modifications (Admin & Petugas only)
-$can_edit = ($role === 'Admin' || $role === 'Petugas');
+// Check permission for modifications (staff and Warehouse Manager can edit)
+$can_edit = ($role === 'staff' || $role === 'Warehouse Manager');
+$can_delete = ($role === 'Warehouse Manager');
 
 // Handle Category CRUD Operations
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $can_edit) {
@@ -53,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $can_edit) {
         }
 
         // DELETE
-        if (isset($_POST['delete_category'])) {
+        if (isset($_POST['delete_category']) && $can_delete) {
             $id = intval($_POST['id'] ?? 0);
             $stmt = mysqli_prepare($conn, "DELETE FROM categories WHERE id = ?");
             mysqli_stmt_bind_param($stmt, "i", $id);
@@ -101,11 +102,10 @@ $token = generate_csrf_token();
         <ul class="sidebar-menu">
             <li><a href="/dashboard.php">Dashboard</a></li>
             <li><a href="/categories/index.php" class="active">Kategori Barang</a></li>
+            <li><a href="/suppliers/index.php">Data Supplier</a></li>
             <li><a href="/items/index.php">Data Barang</a></li>
-            <?php if ($role === 'Admin' || $role === 'Petugas'): ?>
-                <li><a href="/transactions/index.php">Transaksi Barang</a></li>
-            <?php endif; ?>
-            <?php if ($role === 'Admin'): ?>
+            <li><a href="/transactions/index.php">Transaksi Barang</a></li>
+            <?php if ($role === 'Warehouse Manager'): ?>
                 <li><a href="/users/index.php">Kelola User</a></li>
             <?php endif; ?>
             <li><a href="/report/index.php">Laporan</a></li>
@@ -210,11 +210,13 @@ $token = generate_csrf_token();
                             <?php if ($can_edit): ?>
                                 <td style="text-align: center;">
                                     <a href="/categories/index.php?edit_id=<?= esc($row['id']) ?>" class="btn btn-success btn-sm">Edit</a>
-                                    <form action="/categories/index.php" method="POST" style="display:inline;" onsubmit="return confirm('Apakah Anda yakin ingin menghapus kategori ini? Semua barang dengan kategori ini juga akan terhapus.');">
-                                        <input type="hidden" name="csrf_token" value="<?= esc($token) ?>">
-                                        <input type="hidden" name="id" value="<?= esc($row['id']) ?>">
-                                        <button type="submit" name="delete_category" class="btn btn-danger btn-sm">Hapus</button>
-                                    </form>
+                                    <?php if ($can_delete): ?>
+                                        <form action="/categories/index.php" method="POST" style="display:inline;" onsubmit="return confirm('Apakah Anda yakin ingin menghapus kategori ini? Semua barang dengan kategori ini juga akan terhapus.');">
+                                            <input type="hidden" name="csrf_token" value="<?= esc($token) ?>">
+                                            <input type="hidden" name="id" value="<?= esc($row['id']) ?>">
+                                            <button type="submit" name="delete_category" class="btn btn-danger btn-sm">Hapus</button>
+                                        </form>
+                                    <?php endif; ?>
                                 </td>
                             <?php endif; ?>
                         </tr>
