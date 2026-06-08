@@ -63,8 +63,8 @@ CREATE TABLE IF NOT EXISTS `transactions` (
 -- Seed default users (staff: staff123, manager: manager123)
 INSERT INTO `users` (`name`, `username`, `password`, `role`, `phone`)
 VALUES
-('Staff Gudang', 'staff', '$2y$12$gswNUZbyVSEUVIrAa2L7kuDiL.swFSpQuc5t7ohj1C/xwyMu2OfMG', 'staff', '08123456789'),
-('Warehouse Manager', 'manager', '$2y$12$LI8JKJpDuNFYsz28idf3P.qUp0LLh4hnVlCiyW0bNfqpN6YwXJdq6', 'Warehouse Manager', '08123456780');
+('Staff Gudang', 'staff', 'staff123', 'staff', '08123456789'),
+('Warehouse Manager', 'manager', 'manager123', 'Warehouse Manager', '08123456780');
 
 -- Seed default categories
 INSERT INTO `categories` (`category_name`) VALUES

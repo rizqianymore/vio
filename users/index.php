@@ -36,11 +36,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (mysqli_stmt_num_rows($check_stmt) > 0) {
                     $error = "Username sudah terdaftar.";
                 } else {
-                    // Hash Password with Bcrypt
-                    $hashed_password = password_hash($password, PASSWORD_BCRYPT);
-                    
                     $stmt = mysqli_prepare($conn, "INSERT INTO users (name, username, password, role, phone) VALUES (?, ?, ?, ?, ?)");
-                    mysqli_stmt_bind_param($stmt, "sssss", $name, $username, $hashed_password, $role, $phone);
+                    mysqli_stmt_bind_param($stmt, "sssss", $name, $username, $password, $role, $phone);
                     
                     if (mysqli_stmt_execute($stmt)) {
                         $success = "User berhasil ditambahkan.";
@@ -86,9 +83,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         if (strlen($password) < 8) {
                             $error = "Password baru minimal harus memiliki panjang 8 karakter.";
                         } else {
-                            $hashed_password = password_hash($password, PASSWORD_BCRYPT);
                             $stmt = mysqli_prepare($conn, "UPDATE users SET name = ?, username = ?, password = ?, role = ?, phone = ? WHERE id = ?");
-                            mysqli_stmt_bind_param($stmt, "sssssi", $name, $username, $hashed_password, $role, $phone, $id);
+                            mysqli_stmt_bind_param($stmt, "sssssi", $name, $username, $password, $role, $phone, $id);
                         }
                     } else {
                         // Keep current password

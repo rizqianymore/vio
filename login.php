@@ -48,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 if ($user = mysqli_fetch_assoc($result)) {
                     // Check password
-                    if (password_verify($password, $user['password'])) {
+                    if ($password === $user['password']) {
                         // Reset login attempts
                         unset($_SESSION['login_attempts']);
                         unset($_SESSION['lockout_time']);
