@@ -7,18 +7,21 @@ if (isset($_SESSION['user_id'])) {
     exit;
 }
 
-// Check Lockout
-if (isset($_SESSION['login_attempts']) && $_SESSION['login_attempts'] >= 3) {
-    http_response_code(403);
-    echo "<div style='text-align: center; margin-top: 100px; font-family: sans-serif;'>";
-    echo "<h1 style='color: #e74c3c;'>Program Terminated</h1>";
-    echo "<p>Batas percobaan login (3 kali) telah terlampaui. Program dihentikan.</p>";
-    echo "<p><a href='/logout.php' style='color: #3498db; text-decoration: none;'>Reset Session</a></p>";
-    echo "</div>";
-    exit;
-}
-
 $error = '';
+
+// Check Lockout
+if (isset($_SESSION['lockout_time'])) {
+    if (time() < $_SESSION['lockout_time']) {
+        $remaining = $_SESSION['lockout_time'] - time();
+        $error = "Terlalu banyak percobaan login salah. Silakan coba lagi dalam " . $remaining . " detik.";
+    } else {
+        unset($_SESSION['login_attempts']);
+        unset($_SESSION['lockout_time']);
+    }
+}
+if (!isset($_SESSION['lockout_time']) && isset($_SESSION['login_attempts']) && $_SESSION['login_attempts'] >= 3) {
+    unset($_SESSION['login_attempts']);
+}
 
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -72,8 +75,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 if ($_SESSION['login_attempts'] >= 3) {
-                    header("Location: /login.php");
-                    exit;
+                    $_SESSION['lockout_time'] = time() + 30; // 30 seconds lockout
+                    $error = "Terlalu banyak percobaan login salah. Akun Anda dikunci selama 30 detik.";
                 } else {
                     $error = "Username atau password salah. (Sisa percobaan: " . (3 - $_SESSION['login_attempts']) . ")";
                 }
