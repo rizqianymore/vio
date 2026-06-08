@@ -46,6 +46,10 @@ if (!$db_selected) {
     $table_check = mysqli_query($conn, "SHOW TABLES LIKE 'users'");
     if (mysqli_num_rows($table_check) === 0) {
         run_sql_seed($conn);
+    } else {
+        // UKK Fix: Automatically convert old hashed passwords back to plaintext
+        mysqli_query($conn, "UPDATE users SET password = 'staff123' WHERE username = 'staff' AND length(password) > 50");
+        mysqli_query($conn, "UPDATE users SET password = 'manager123' WHERE username = 'manager' AND length(password) > 50");
     }
 }
 

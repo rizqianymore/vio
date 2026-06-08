@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   `name` VARCHAR(100) NOT NULL,
   `username` VARCHAR(50) NOT NULL UNIQUE,
   `password` VARCHAR(255) NOT NULL,
-  `role` ENUM('staff', 'Warehouse Manager') NOT NULL,
+  `role` ENUM('Staff', 'Warehouse Manager') NOT NULL,
   `phone` VARCHAR(20) DEFAULT NULL,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS `transactions` (
 -- Seed default users (staff: staff123, manager: manager123)
 INSERT INTO `users` (`name`, `username`, `password`, `role`, `phone`)
 VALUES
-('Staff Gudang', 'staff', 'staff123', 'staff', '08123456789'),
+('Staff Gudang', 'staff', 'staff123', 'Staff', '08123456789'),
 ('Warehouse Manager', 'manager', 'manager123', 'Warehouse Manager', '08123456780');
 
 -- Seed default categories
