@@ -19,13 +19,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $name = trim($_POST['name'] ?? '');
             $username = trim($_POST['username'] ?? '');
             $password = $_POST['password'] ?? '';
-            $role = $_POST['role'] ?? 'staff';
+            $role = $_POST['role'] ?? 'Staff';
             $phone = trim($_POST['phone'] ?? '');
 
             if (empty($name) || empty($username) || empty($password)) {
                 $error = "Nama, Username, dan Password wajib diisi.";
-            } elseif (strlen($password) < 8) {
-                $error = "Password minimal harus memiliki panjang 8 karakter.";
             } else {
                 // Check if username already exists
                 $check_stmt = mysqli_prepare($conn, "SELECT id FROM users WHERE username = ?");
@@ -56,11 +54,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $name = trim($_POST['name'] ?? '');
             $username = trim($_POST['username'] ?? '');
             $password = $_POST['password'] ?? '';
-            $role = $_POST['role'] ?? 'staff';
+            $role = $_POST['role'] ?? 'Staff';
             $phone = trim($_POST['phone'] ?? '');
 
             // Prevent self-demotion or self-deletion from Warehouse Manager to maintain system availability
-            if ($id === $_SESSION['user_id'] && $role !== 'Warehouse Manager') {
+            if ($id == $_SESSION['user_id'] && $role !== 'Warehouse Manager') {
                 $error = "Anda tidak dapat mengubah role Anda sendiri dari Warehouse Manager.";
             }
 
@@ -110,7 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $id = intval($_POST['id'] ?? 0);
             
             // Prevent deleting current logged-in user
-            if ($id === $_SESSION['user_id']) {
+            if ($id == $_SESSION['user_id']) {
                 $error = "Anda tidak dapat menghapus akun Anda sendiri.";
             } else {
                 $stmt = mysqli_prepare($conn, "DELETE FROM users WHERE id = ?");
@@ -212,7 +210,7 @@ $token = generate_csrf_token();
                         <div class="form-group">
                             <label for="role">Role</label>
                             <select id="role" name="role" class="form-control" required>
-                                <option value="staff">staff</option>
+                                <option value="Staff">Staff</option>
                                 <option value="Warehouse Manager">Warehouse Manager</option>
                             </select>
                         </div>
@@ -263,7 +261,7 @@ $token = generate_csrf_token();
                         <div class="form-group">
                             <label for="role_edit">Role</label>
                             <select id="role_edit" name="role" class="form-control" required>
-                                <option value="staff" <?= ($edit_row['role'] === 'staff') ? 'selected' : '' ?>>staff</option>
+                                <option value="Staff" <?= ($edit_row['role'] === 'Staff') ? 'selected' : '' ?>>Staff</option>
                                 <option value="Warehouse Manager" <?= ($edit_row['role'] === 'Warehouse Manager') ? 'selected' : '' ?>>Warehouse Manager</option>
                             </select>
                         </div>
